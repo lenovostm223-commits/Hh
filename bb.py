@@ -485,10 +485,22 @@ class GofileDownloader:
             'Origin': 'https://gofile.io',
             'Referer': 'https://gofile.io/'
         })
-        self.token = GOFILE_API_TOKEN or self._get_guest_token()
-
-    def _get_guest_token(self) -> str:
-        try:
+  def _get_token(self) -> str:
+    """Get Gofile API token - Updated API"""
+    try:
+        # Naya API endpoint
+        resp = self.session.get('https://api.gofile.io/getToken', timeout=10)
+        data = resp.json()
+        if data.get('status') == 'ok':
+            token = data['data']['token']
+            self.session.headers.update({
+                'Authorization': f'Bearer {token}',
+                'Cookie': f'accountToken={token}'
+            })
+            logger.info("✅ Gofile token obtained")
+            return token
+        else:
+            # Fallback to old method
             resp = self.session.post('https://api.gofile.io/createAccount', timeout=10)
             data = resp.json()
             if data.get('status') == 'ok':
@@ -497,11 +509,11 @@ class GofileDownloader:
                     'Authorization': f'Bearer {token}',
                     'Cookie': f'accountToken={token}'
                 })
-                logger.info("✅ Gofile guest token obtained")
+                logger.info("✅ Gofile token obtained (fallback)")
                 return token
-        except Exception as e:
-            logger.error(f"Gofile token error: {e}")
-        return ""
+    except Exception as e:
+        logger.error(f"Gofile token error: {e}")
+    return "" 
 
     def get_content(self, content_id: str, password: str = None) -> Dict:
         url = f"https://api.gofile.io/contents/{content_id}"
